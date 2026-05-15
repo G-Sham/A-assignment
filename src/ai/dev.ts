@@ -1,1 +1,6 @@
-// Flows will be imported for their side effects in this file.
+import { config } from 'dotenv';
+config();
+
+import '@/ai/flows/provide-seo-suggestions.ts';
+import '@/ai/flows/generate-seo-blog-post.ts';
+import '@/ai/flows/optimize-content-sections.ts';

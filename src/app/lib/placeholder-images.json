@@ -1,0 +1,23 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-dashboard",
+      "description": "Futuristic AI Dashboard Mockup",
+      "imageUrl": "https://picsum.photos/seed/forge1/1200/800",
+      "imageHint": "futuristic dashboard"
+    },
+    {
+      "id": "seo-analytics",
+      "description": "SEO Analytics Chart Preview",
+      "imageUrl": "https://picsum.photos/seed/forge2/600/400",
+      "imageHint": "data visualization"
+    },
+    {
+      "id": "ai-writing",
+      "description": "AI Writing Interface",
+      "imageUrl": "https://picsum.photos/seed/forge3/800/600",
+      "imageHint": "artificial intelligence"
+    }
+  ]
+}
