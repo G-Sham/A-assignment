@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -5,7 +6,6 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { 
   Select, 
@@ -20,7 +20,6 @@ import {
   Loader2, 
   Search, 
   Layers, 
-  FileText, 
   CheckCircle2,
   AlertCircle,
   BarChart4
@@ -28,13 +27,21 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { generateSeoBlogPost, GenerateSeoBlogPostOutput } from "@/ai/flows/generate-seo-blog-post";
 import { provideSeoSuggestions, ProvideSeoSuggestionsOutput } from "@/ai/flows/provide-seo-suggestions";
+import { useUser, useFirestore } from "@/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 
 export default function GeneratorPage() {
+  const { user } = useUser();
+  const db = useFirestore();
+  const router = useRouter();
+  
   const [step, setStep] = useState<"input" | "generating" | "result">("input");
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
   const [result, setResult] = useState<GenerateSeoBlogPostOutput | null>(null);
   const [seoResult, setSeoResult] = useState<ProvideSeoSuggestionsOutput | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   
   const [formData, setFormData] = useState({
     blogTopic: "",
@@ -51,7 +58,6 @@ export default function GeneratorPage() {
     setStatusMessage("Analyzing keywords and sources...");
     
     try {
-      // Simulate steps for cinematic effect
       setTimeout(() => { setProgress(30); setStatusMessage("Extracting core insights..."); }, 1500);
       setTimeout(() => { setProgress(50); setStatusMessage("Synthesizing human-like prose..."); }, 3000);
       
@@ -61,7 +67,6 @@ export default function GeneratorPage() {
       setProgress(80);
       setStatusMessage("Performing SEO Intelligence Audit...");
       
-      // Perform SEO analysis on introduction + first section
       const contentForSeo = `${blog.introduction}\n\n${blog.sections[0].content}`;
       const suggestions = await provideSeoSuggestions({
         blogContent: contentForSeo,
@@ -76,6 +81,34 @@ export default function GeneratorPage() {
       console.error(error);
       setStep("input");
       alert("Failed to generate content. Please try again.");
+    }
+  };
+
+  const handleSaveToCloud = async () => {
+    if (!user || !db || !result || !seoResult) return;
+    setIsSaving(true);
+    
+    try {
+      const blogData = {
+        userId: user.uid,
+        seoTitle: result.seoTitle,
+        metaDescription: result.metaDescription,
+        introduction: result.introduction,
+        sections: result.sections,
+        faqs: result.faqs,
+        conclusion: result.conclusion,
+        callToAction: result.callToAction,
+        seoScore: seoResult.seoScore,
+        keywords: formData.keywords.split(',').map(k => k.trim()),
+        status: "Draft",
+        createdAt: new Date().toISOString()
+      };
+      
+      await addDoc(collection(db, "blogPosts"), blogData);
+      router.push("/dashboard/history");
+    } catch (error) {
+      console.error("Error saving blog:", error);
+      setIsSaving(false);
     }
   };
 
@@ -97,27 +130,6 @@ export default function GeneratorPage() {
             <span>Optimize</span>
           </div>
         </div>
-
-        <div className="mt-20 grid grid-cols-3 gap-8 w-full opacity-50">
-           <div className="flex flex-col items-center gap-2">
-             <div className={`p-3 rounded-xl bg-white/5 ${progress >= 30 ? "text-primary border border-primary/20 bg-primary/10" : ""}`}>
-               <Search className="w-5 h-5" />
-             </div>
-             <span className="text-xs">Research</span>
-           </div>
-           <div className="flex flex-col items-center gap-2">
-             <div className={`p-3 rounded-xl bg-white/5 ${progress >= 60 ? "text-primary border border-primary/20 bg-primary/10" : ""}`}>
-               <Layers className="w-5 h-5" />
-             </div>
-             <span className="text-xs">Synthesis</span>
-           </div>
-           <div className="flex flex-col items-center gap-2">
-             <div className={`p-3 rounded-xl bg-white/5 ${progress >= 90 ? "text-primary border border-primary/20 bg-primary/10" : ""}`}>
-               <Sparkles className="w-5 h-5" />
-             </div>
-             <span className="text-xs">Optimization</span>
-           </div>
-        </div>
       </div>
     );
   }
@@ -128,13 +140,18 @@ export default function GeneratorPage() {
         <div className="flex items-center justify-between mb-8">
           <Button variant="outline" onClick={() => setStep("input")} className="rounded-full">Back to Editor</Button>
           <div className="flex gap-4">
-            <Button variant="outline" className="rounded-full">Export PDF</Button>
-            <Button className="bg-primary hover:bg-primary/90 neon-glow rounded-full px-8">Save to Cloud</Button>
+            <Button 
+              onClick={handleSaveToCloud} 
+              disabled={isSaving}
+              className="bg-primary hover:bg-primary/90 neon-glow rounded-full px-8"
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Save to Cloud
+            </Button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Main Content */}
           <GlassCard className="lg:col-span-3 p-10 border-white/10 min-h-screen">
             <div className="max-w-3xl mx-auto space-y-10">
               <header className="space-y-4 border-b border-white/5 pb-10">
@@ -179,7 +196,6 @@ export default function GeneratorPage() {
             </div>
           </GlassCard>
 
-          {/* SEO Panel */}
           <div className="space-y-6">
             <GlassCard className="p-6 border-white/10">
               <h3 className="font-bold mb-4 flex items-center gap-2 text-primary">
@@ -190,25 +206,10 @@ export default function GeneratorPage() {
                 <span className="text-xs text-muted-foreground">/ 100</span>
               </div>
               <Progress value={seoResult?.seoScore || 0} className="h-2 bg-white/5 mb-4" />
-              <p className="text-xs text-muted-foreground">Based on keyword density, readability, and structure.</p>
             </GlassCard>
 
             <GlassCard className="p-6 border-white/10">
-              <h3 className="font-bold mb-4">Readability</h3>
-              <div className="space-y-4">
-                 <div className="flex justify-between items-center text-sm">
-                   <span className="text-muted-foreground">Flesch Ease</span>
-                   <span className="font-bold">{seoResult?.readabilityScore.fleschReadingEase}</span>
-                 </div>
-                 <div className="flex justify-between items-center text-sm">
-                   <span className="text-muted-foreground">Grade Level</span>
-                   <span className="font-bold">{seoResult?.readabilityScore.gradeLevel}</span>
-                 </div>
-              </div>
-            </GlassCard>
-
-            <GlassCard className="p-6 border-white/10">
-              <h3 className="font-bold mb-4">Keywords</h3>
+              <h3 className="font-bold mb-4 text-xs uppercase tracking-widest text-muted-foreground">Keywords</h3>
               <div className="space-y-4">
                 {seoResult?.keywordDensityAnalysis.map((k, idx) => (
                   <div key={idx} className="space-y-1">
@@ -221,16 +222,6 @@ export default function GeneratorPage() {
                 ))}
               </div>
             </GlassCard>
-
-            <div className="space-y-3">
-               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-2">Suggestions</p>
-               {seoResult?.overallSuggestions.slice(0, 3).map((s, idx) => (
-                 <div key={idx} className="flex gap-3 text-sm text-muted-foreground bg-white/5 p-3 rounded-lg border border-white/5">
-                   <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                   {s}
-                 </div>
-               ))}
-            </div>
           </div>
         </div>
       </div>
@@ -304,20 +295,6 @@ export default function GeneratorPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Language</Label>
-              <Select value={formData.language} onValueChange={(val) => setFormData({...formData, language: val})}>
-                <SelectTrigger className="bg-white/5 border-white/10 h-12">
-                  <SelectValue placeholder="Select language" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="English">English</SelectItem>
-                  <SelectItem value="Spanish">Spanish</SelectItem>
-                  <SelectItem value="French">French</SelectItem>
-                  <SelectItem value="German">German</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
 
@@ -331,36 +308,6 @@ export default function GeneratorPage() {
           <ArrowRight className="w-5 h-5 ml-3" />
         </Button>
       </GlassCard>
-
-      <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 opacity-60">
-        <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
-            <Search className="w-5 h-5 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="text-sm font-bold">Deep Research</p>
-            <p className="text-[10px] text-muted-foreground">Synthesized from 10+ sources</p>
-          </div>
-        </div>
-        <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
-            <BarChart4 className="w-5 h-5 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="text-sm font-bold">SEO Audit</p>
-            <p className="text-[10px] text-muted-foreground">Real-time keyword optimization</p>
-          </div>
-        </div>
-        <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
-            <CheckCircle2 className="w-5 h-5 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="text-sm font-bold">Plagiarism Free</p>
-            <p className="text-[10px] text-muted-foreground">100% human-like content</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

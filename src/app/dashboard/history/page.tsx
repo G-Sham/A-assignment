@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useMemo } from "react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,20 +10,36 @@ import {
   Filter, 
   MoreHorizontal, 
   ExternalLink, 
-  Clock, 
-  BarChart2,
-  Calendar
+  Calendar,
+  Loader2
 } from "lucide-react";
-
-const history = [
-  { id: 1, title: "The Rise of Edge Computing in 2024", date: "Oct 24, 2023", score: 98, status: "Published", keywords: "Edge Computing, Cloud, Future" },
-  { id: 2, title: "10 SEO Tips for Small Businesses", date: "Oct 22, 2023", score: 85, status: "Published", keywords: "SEO, Marketing, Tips" },
-  { id: 3, title: "Understanding Generative AI Infrastructure", date: "Oct 20, 2023", score: 92, status: "Archived", keywords: "AI, Genkit, Next.js" },
-  { id: 4, title: "A Deep Dive into React Server Components", date: "Oct 18, 2023", score: 88, status: "Published", keywords: "React, Web Development" },
-  { id: 5, title: "How to Build a Modern SaaS Stack", date: "Oct 15, 2023", score: 95, status: "Draft", keywords: "SaaS, Startup, Tech" },
-];
+import { useUser, useFirestore, useCollection } from "@/firebase";
+import { collection, query, where, orderBy } from "firebase/firestore";
+import { format } from "date-fns";
 
 export default function HistoryPage() {
+  const { user } = useUser();
+  const db = useFirestore();
+
+  const blogPostsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(
+      collection(db, "blogPosts"),
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
+  }, [db, user]);
+
+  const { data: history, loading } = useCollection(blogPostsQuery);
+
+  if (loading) {
+    return (
+      <div className="h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -36,7 +53,7 @@ export default function HistoryPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input 
-            placeholder="Filter projects by title or keyword..." 
+            placeholder="Search projects..." 
             className="w-full h-11 pl-10 pr-4 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-colors"
           />
         </div>
@@ -59,24 +76,24 @@ export default function HistoryPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {history.map((item) => (
+            {history?.map((item) => (
               <tr key={item.id} className="group hover:bg-white/[0.02] transition-colors">
                 <td className="px-6 py-6">
-                  <p className="text-sm font-bold group-hover:text-primary transition-colors">{item.title}</p>
+                  <p className="text-sm font-bold group-hover:text-primary transition-colors">{item.seoTitle}</p>
                 </td>
                 <td className="px-6 py-6">
-                  <p className="text-xs text-muted-foreground">{item.keywords}</p>
+                  <p className="text-xs text-muted-foreground">{item.keywords?.join(', ')}</p>
                 </td>
                 <td className="px-6 py-6">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Calendar className="w-3 h-3" />
-                    {item.date}
+                    {item.createdAt ? format(new Date(item.createdAt), "MMM d, yyyy") : "N/A"}
                   </div>
                 </td>
                 <td className="px-6 py-6">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full border border-primary/20 bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
-                      {item.score}
+                      {item.seoScore}
                     </div>
                   </div>
                 </td>
@@ -97,6 +114,13 @@ export default function HistoryPage() {
                 </td>
               </tr>
             ))}
+            {(!history || history.length === 0) && (
+              <tr>
+                <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                  No projects found. Start by generating your first blog post!
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </GlassCard>

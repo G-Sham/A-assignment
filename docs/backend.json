@@ -1,0 +1,79 @@
+
+{
+  "entities": {
+    "BlogPost": {
+      "title": "BlogPost",
+      "description": "Represents an AI-generated blog post with SEO metadata.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who generated the post."
+        },
+        "seoTitle": {
+          "type": "string",
+          "description": "SEO-optimized title."
+        },
+        "metaDescription": {
+          "type": "string",
+          "description": "SEO-optimized meta description."
+        },
+        "introduction": {
+          "type": "string",
+          "description": "The introduction paragraph."
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "heading": { "type": "string" },
+              "content": { "type": "string" }
+            }
+          }
+        },
+        "faqs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": { "type": "string" },
+              "answer": { "type": "string" }
+            }
+          }
+        },
+        "conclusion": {
+          "type": "string"
+        },
+        "callToAction": {
+          "type": "string"
+        },
+        "seoScore": {
+          "type": "number"
+        },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Draft", "Published", "Archived"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "seoTitle", "createdAt", "status"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/blogPosts/{postId}": {
+      "schema": "BlogPost",
+      "description": "Collection of all generated blog posts."
+    }
+  }
+}
