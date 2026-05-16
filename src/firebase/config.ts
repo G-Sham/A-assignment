@@ -1,4 +1,10 @@
 
+/**
+ * Firebase configuration object.
+ * 
+ * IMPORTANT: You must replace these placeholder values with your real credentials
+ * found in the Firebase Console (Project Settings -> General -> Your Apps).
+ */
 export const firebaseConfig = {
   apiKey: "REPLACE_WITH_YOUR_API_KEY",
   authDomain: "studio-166493770-43c8a.firebaseapp.com",
