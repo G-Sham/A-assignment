@@ -2,14 +2,14 @@
 /**
  * Firebase configuration object.
  * 
- * IMPORTANT: You must replace these placeholder values with your real credentials
- * found in the Firebase Console (Project Settings -> General -> Your Apps).
+ * IMPORTANT: Replace the placeholders below with the real values 
+ * from your Firebase Console (Project Settings -> General -> Your Apps).
  */
 export const firebaseConfig = {
-  apiKey: "REPLACE_WITH_YOUR_API_KEY",
+  apiKey: "PASTE_YOUR_API_KEY_HERE",
   authDomain: "studio-166493770-43c8a.firebaseapp.com",
   projectId: "studio-166493770-43c8a",
   storageBucket: "studio-166493770-43c8a.firebasestorage.app",
-  messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
-  appId: "REPLACE_WITH_YOUR_APP_ID",
+  messagingSenderId: "646473809079",
+  appId: "PASTE_YOUR_APP_ID_HERE",
 };
