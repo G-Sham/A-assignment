@@ -1,9 +1,9 @@
-
 "use client";
 
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { 
   TrendingUp, 
   Users, 
@@ -12,7 +12,8 @@ import {
   Plus, 
   MoreVertical,
   Zap,
-  BarChart4
+  BarChart4,
+  ChevronRight
 } from "lucide-react";
 import {
   AreaChart,
