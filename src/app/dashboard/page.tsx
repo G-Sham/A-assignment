@@ -25,7 +25,7 @@ import {
   ResponsiveContainer
 } from "recharts";
 import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection, query, where, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, orderBy } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -57,7 +57,7 @@ export default function DashboardOverview() {
   const stats = useMemo(() => {
     if (!history) return { count: 0, avgScore: 0 };
     const count = history.length;
-    const totalScore = history.reduce((acc, curr) => acc + (curr.seoScore || 0), 0);
+    const totalScore = history.reduce((acc, curr: any) => acc + (curr.seoScore || 0), 0);
     const avgScore = count > 0 ? Math.round(totalScore / count) : 0;
     return { count, avgScore };
   }, [history]);
@@ -74,7 +74,7 @@ export default function DashboardOverview() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold font-headline mb-2">Welcome back, {user?.displayName?.split(' ')[0] || 'User'}</h1>
+          <h1 className="text-3xl font-bold font-headline mb-2">Welcome back, {user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || 'User'}</h1>
           <p className="text-muted-foreground">Monitor your content performance and AI workspace activity.</p>
         </div>
         <Link href="/dashboard/generate">
@@ -158,7 +158,7 @@ export default function DashboardOverview() {
         <GlassCard className="p-6 border-white/5">
           <h3 className="text-lg font-bold mb-6">Recent Projects</h3>
           <div className="space-y-6">
-            {history?.slice(0, 4).map((item) => (
+            {history?.slice(0, 4).map((item: any) => (
               <ActivityItem 
                 key={item.id}
                 title={item.seoTitle} 

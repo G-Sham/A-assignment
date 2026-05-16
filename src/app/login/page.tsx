@@ -1,54 +1,183 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Sparkles } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sparkles, Mail, Lock, Loader2 } from "lucide-react";
 import { useAuth, useUser } from "@/firebase";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword 
+} from "firebase/auth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
-  const { user, loading } = useUser();
+  const { user, loading: userLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (user && !loading) {
+    if (user && !userLoading) {
       router.push("/dashboard");
     }
-  }, [user, loading, router]);
+  }, [user, userLoading, router]);
 
-  const handleLogin = async () => {
+  const handleGoogleLogin = async () => {
     if (!auth) return;
+    setIsLoading(true);
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Login failed:", error);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Login failed",
+        description: error.message
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const handleEmailAuth = async (type: 'signin' | 'signup') => {
+    if (!auth || !email || !password) return;
+    setIsLoading(true);
+    try {
+      if (type === 'signin') {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: type === 'signin' ? "Login failed" : "Signup failed",
+        description: error.message
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (userLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-background">
       <div className="absolute inset-0 animate-grid opacity-20 pointer-events-none" />
       
-      <GlassCard className="max-w-md w-full p-10 border-white/10 text-center relative z-10">
-        <div className="w-16 h-16 rounded-2xl bg-primary neon-glow flex items-center justify-center mx-auto mb-8">
-          <Sparkles className="text-white w-8 h-8" />
+      <GlassCard className="max-w-md w-full p-8 border-white/10 relative z-10">
+        <div className="w-12 h-12 rounded-xl bg-primary neon-glow flex items-center justify-center mx-auto mb-6">
+          <Sparkles className="text-white w-6 h-6" />
         </div>
         
-        <h1 className="text-3xl font-headline font-bold mb-4">ContentForge AI</h1>
-        <p className="text-muted-foreground mb-10 leading-relaxed">
-          The intelligent SEO content engine for modern marketing teams.
-        </p>
-        
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-headline font-bold">ContentForge AI</h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            The intelligent SEO content engine.
+          </p>
+        </div>
+
+        <Tabs defaultValue="signin" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="signin">Sign In</TabsTrigger>
+            <TabsTrigger value="signup">Register</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="signin" className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="signin-email">Email</Label>
+              <Input 
+                id="signin-email" 
+                type="email" 
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="signin-password">Password</Label>
+              <Input 
+                id="signin-password" 
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <Button 
+              className="w-full" 
+              onClick={() => handleEmailAuth('signin')}
+              disabled={isLoading}
+            >
+              {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Sign In
+            </Button>
+          </TabsContent>
+
+          <TabsContent value="signup" className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="signup-email">Email</Label>
+              <Input 
+                id="signup-email" 
+                type="email" 
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="signup-password">Password</Label>
+              <Input 
+                id="signup-password" 
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <Button 
+              className="w-full" 
+              onClick={() => handleEmailAuth('signup')}
+              disabled={isLoading}
+            >
+              {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Create Account
+            </Button>
+          </TabsContent>
+        </Tabs>
+
+        <div className="relative my-8">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-white/10" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+          </div>
+        </div>
+
         <Button 
-          onClick={handleLogin}
-          className="w-full h-12 bg-white text-black hover:bg-gray-100 font-bold rounded-xl flex items-center justify-center gap-3"
+          variant="outline" 
+          className="w-full gap-3 bg-white/5 border-white/10 text-white hover:bg-white/10"
+          onClick={handleGoogleLogin}
+          disabled={isLoading}
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" viewBox="0 0 24 24">
             <path
               fill="currentColor"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -66,12 +195,8 @@ export default function LoginPage() {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
             />
           </svg>
-          Continue with Google
+          Google
         </Button>
-        
-        <p className="mt-8 text-[10px] text-muted-foreground uppercase tracking-widest">
-          Secure AI Workspace • Real-time Sync
-        </p>
       </GlassCard>
     </div>
   );

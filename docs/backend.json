@@ -68,7 +68,7 @@
     }
   },
   "auth": {
-    "providers": ["google.com"]
+    "providers": ["password", "google.com"]
   },
   "firestore": {
     "/blogPosts/{postId}": {

@@ -27,14 +27,16 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { generateSeoBlogPost, GenerateSeoBlogPostOutput } from "@/ai/flows/generate-seo-blog-post";
 import { provideSeoSuggestions, ProvideSeoSuggestionsOutput } from "@/ai/flows/provide-seo-suggestions";
-import { useUser, useFirestore } from "@/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { collection, addDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 export default function GeneratorPage() {
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
+  const { toast } = useToast();
   
   const [step, setStep] = useState<"input" | "generating" | "result">("input");
   const [progress, setProgress] = useState(0);
@@ -53,6 +55,7 @@ export default function GeneratorPage() {
   });
 
   const handleGenerate = async () => {
+    if (!formData.blogTopic) return;
     setStep("generating");
     setProgress(10);
     setStatusMessage("Analyzing keywords and sources...");
@@ -77,39 +80,54 @@ export default function GeneratorPage() {
       setProgress(100);
       setStatusMessage("Generation complete!");
       setTimeout(() => setStep("result"), 500);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       setStep("input");
-      alert("Failed to generate content. Please try again.");
+      toast({
+        variant: "destructive",
+        title: "Generation Failed",
+        description: error.message || "An unexpected error occurred."
+      });
     }
   };
 
-  const handleSaveToCloud = async () => {
+  const handleSaveToCloud = () => {
     if (!user || !db || !result || !seoResult) return;
     setIsSaving(true);
     
-    try {
-      const blogData = {
-        userId: user.uid,
-        seoTitle: result.seoTitle,
-        metaDescription: result.metaDescription,
-        introduction: result.introduction,
-        sections: result.sections,
-        faqs: result.faqs,
-        conclusion: result.conclusion,
-        callToAction: result.callToAction,
-        seoScore: seoResult.seoScore,
-        keywords: formData.keywords.split(',').map(k => k.trim()),
-        status: "Draft",
-        createdAt: new Date().toISOString()
-      };
-      
-      await addDoc(collection(db, "blogPosts"), blogData);
-      router.push("/dashboard/history");
-    } catch (error) {
-      console.error("Error saving blog:", error);
-      setIsSaving(false);
-    }
+    const blogData = {
+      userId: user.uid,
+      seoTitle: result.seoTitle,
+      metaDescription: result.metaDescription,
+      introduction: result.introduction,
+      sections: result.sections,
+      faqs: result.faqs,
+      conclusion: result.conclusion,
+      callToAction: result.callToAction,
+      seoScore: seoResult.seoScore,
+      keywords: formData.keywords.split(',').map(k => k.trim()),
+      status: "Draft",
+      createdAt: new Date().toISOString()
+    };
+    
+    const postsRef = collection(db, "blogPosts");
+    addDoc(postsRef, blogData)
+      .then(() => {
+        toast({
+          title: "Saved successfully",
+          description: "Your blog post has been forged and saved to your library."
+        });
+        router.push("/dashboard/history");
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: postsRef.path,
+          operation: "create",
+          requestResourceData: blogData
+        });
+        errorEmitter.emit("permission-error", permissionError);
+        setIsSaving(false);
+      });
   };
 
   if (step === "generating") {
@@ -152,49 +170,51 @@ export default function GeneratorPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <GlassCard className="lg:col-span-3 p-10 border-white/10 min-h-screen">
-            <div className="max-w-3xl mx-auto space-y-10">
-              <header className="space-y-4 border-b border-white/5 pb-10">
-                <Badge className="bg-primary/20 text-primary border-primary/20">SEO Optimization Active</Badge>
-                <h1 className="text-5xl font-headline font-bold leading-tight">{result.seoTitle}</h1>
-                <p className="text-muted-foreground text-lg leading-relaxed">{result.metaDescription}</p>
-              </header>
+          <div className="lg:col-span-3">
+            <GlassCard className="p-10 border-white/10 min-h-screen">
+              <div className="max-w-3xl mx-auto space-y-10">
+                <header className="space-y-4 border-b border-white/5 pb-10">
+                  <Badge className="bg-primary/20 text-primary border-primary/20">SEO Optimization Active</Badge>
+                  <h1 className="text-5xl font-headline font-bold leading-tight">{result.seoTitle}</h1>
+                  <p className="text-muted-foreground text-lg leading-relaxed">{result.metaDescription}</p>
+                </header>
 
-              <div className="prose prose-invert prose-lg max-w-none space-y-8">
-                <p className="italic text-xl text-muted-foreground border-l-4 border-primary pl-6 py-2">
-                  {result.introduction}
-                </p>
+                <div className="prose prose-invert prose-lg max-w-none space-y-8">
+                  <p className="italic text-xl text-muted-foreground border-l-4 border-primary pl-6 py-2">
+                    {result.introduction}
+                  </p>
 
-                {result.sections.map((section, idx) => (
-                  <section key={idx} className="space-y-4">
-                    <h2 className="text-3xl font-bold">{section.heading}</h2>
-                    <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                      {section.content}
-                    </div>
+                  {result.sections.map((section, idx) => (
+                    <section key={idx} className="space-y-4">
+                      <h2 className="text-3xl font-bold">{section.heading}</h2>
+                      <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                        {section.content}
+                      </div>
+                    </section>
+                  ))}
+
+                  <section className="bg-white/5 p-8 rounded-2xl border border-white/5 space-y-6">
+                     <h3 className="text-2xl font-bold flex items-center gap-2">
+                       <AlertCircle className="text-primary w-6 h-6" />
+                       Frequently Asked Questions
+                     </h3>
+                     {result.faqs.map((faq, idx) => (
+                       <div key={idx} className="space-y-2">
+                         <p className="font-bold text-white">{faq.question}</p>
+                         <p className="text-muted-foreground text-sm">{faq.answer}</p>
+                       </div>
+                     ))}
                   </section>
-                ))}
 
-                <section className="bg-white/5 p-8 rounded-2xl border border-white/5 space-y-6">
-                   <h3 className="text-2xl font-bold flex items-center gap-2">
-                     <AlertCircle className="text-primary w-6 h-6" />
-                     Frequently Asked Questions
-                   </h3>
-                   {result.faqs.map((faq, idx) => (
-                     <div key={idx} className="space-y-2">
-                       <p className="font-bold text-white">{faq.question}</p>
-                       <p className="text-muted-foreground text-sm">{faq.answer}</p>
-                     </div>
-                   ))}
-                </section>
-
-                <div className="bg-primary/10 border border-primary/20 p-8 rounded-2xl text-center">
-                  <h3 className="text-xl font-bold mb-4">Conclusion</h3>
-                  <p className="text-muted-foreground mb-6">{result.conclusion}</p>
-                  <Button className="bg-primary hover:bg-primary/90 rounded-full px-8">{result.callToAction}</Button>
+                  <div className="bg-primary/10 border border-primary/20 p-8 rounded-2xl text-center">
+                    <h3 className="text-xl font-bold mb-4">Conclusion</h3>
+                    <p className="text-muted-foreground mb-6">{result.conclusion}</p>
+                    <Button className="bg-primary hover:bg-primary/90 rounded-full px-8">{result.callToAction}</Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </GlassCard>
+            </GlassCard>
+          </div>
 
           <div className="space-y-6">
             <GlassCard className="p-6 border-white/10">
